@@ -570,6 +570,43 @@ func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *
 	return evm.create(caller, codeAndHash, gas, endowment, contractAddr, CREATE2)
 }
 
+func (evm *EVM) CreateWithAddress(caller ContractRef, code []byte, gas uint64, value *uint256.Int, address common.Address) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
+	return evm.create(caller, &codeAndHash{code: code}, gas, value, address, CREATE)
+}
+
+func (evm *EVM) GetDeploymentCode(caller ContractRef, code []byte, gas uint64, value *uint256.Int, address common.Address) ([]byte, uint64, error) {
+	contract := NewContract(caller, AccountRef(address), value, gas)
+	contract.SetCodeOptionalHash(&address, &codeAndHash{code: code})
+
+	ret, err := evm.interpreter.Run(contract, nil, false)
+	// Check whether the max code size has been exceeded, assign err if the case.
+	if err == nil && evm.chainRules.IsEIP158 && len(ret) > params.MaxCodeSize {
+		err = ErrMaxCodeSizeExceeded
+	}
+
+	// Reject code starting with 0xEF if EIP-3541 is enabled.
+	if err == nil && len(ret) >= 1 && ret[0] == 0xEF && evm.chainRules.IsLondon {
+		err = ErrInvalidCode
+	}
+
+	if err == nil {
+		createDataGas := uint64(len(ret)) * params.CreateDataGas
+		if !contract.UseGas(createDataGas, evm.Config.Tracer, tracing.GasChangeCallCodeStorage) {
+			err = ErrCodeStoreOutOfGas
+		}
+	}
+
+	// When an error was returned by the EVM or when setting the creation code
+	// above we revert to the snapshot and consume any gas remaining. Additionally,
+	// when we're in homestead this also counts for code storage gas errors.
+	if err != nil && (evm.chainRules.IsHomestead || err != ErrCodeStoreOutOfGas) {
+		if err != ErrExecutionReverted {
+			contract.UseGas(contract.Gas, evm.Config.Tracer, tracing.GasChangeCallFailedExecution)
+		}
+	}
+	return ret, contract.Gas, err
+}
+
 // resolveCode returns the code associated with the provided account. After
 // Prague, it can also resolve code pointed to by a delegation designator.
 func (evm *EVM) resolveCode(addr common.Address) []byte {

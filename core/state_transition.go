@@ -205,7 +205,7 @@ func TransactionToMessage(tx *types.Transaction, s types.Signer, baseFee *big.In
 // state and would never be accepted within a block.
 func ApplyMessage(evm *vm.EVM, msg *Message, gp *GasPool) (*ExecutionResult, error) {
 	evm.SetTxContext(NewEVMTxContext(msg))
-	return newStateTransition(evm, msg, gp).execute()
+	return NewStateTransition(evm, msg, gp, false).execute()
 }
 
 // stateTransition represents a state transition.
@@ -237,15 +237,17 @@ type stateTransition struct {
 	initialGas   uint64
 	state        vm.StateDB
 	evm          *vm.EVM
+	feeCharged   bool
 }
 
-// newStateTransition initialises and returns a new state transition object.
-func newStateTransition(evm *vm.EVM, msg *Message, gp *GasPool) *stateTransition {
+// NewStateTransition initialises and returns a new state transition object.
+func NewStateTransition(evm *vm.EVM, msg *Message, gp *GasPool, feeCharged bool) *stateTransition {
 	return &stateTransition{
-		gp:    gp,
-		evm:   evm,
-		msg:   msg,
-		state: evm.StateDB,
+		gp:         gp,
+		evm:        evm,
+		msg:        msg,
+		state:      evm.StateDB,
+		feeCharged: feeCharged,
 	}
 }
 
@@ -257,7 +259,7 @@ func (st *stateTransition) to() common.Address {
 	return *st.msg.To
 }
 
-func (st *stateTransition) buyGas() error {
+func (st *stateTransition) BuyGas() error {
 	mgval := new(big.Int).SetUint64(st.msg.GasLimit)
 	mgval.Mul(mgval, st.msg.GasPrice)
 	balanceCheck := new(big.Int).Set(mgval)
@@ -301,7 +303,21 @@ func (st *stateTransition) buyGas() error {
 	return nil
 }
 
-func (st *stateTransition) preCheck() error {
+func (st *stateTransition) initGas() error {
+	if err := st.gp.SubGas(st.msg.GasLimit); err != nil {
+		return err
+	}
+	if st.evm.Config.Tracer != nil && st.evm.Config.Tracer.OnGasChange != nil {
+		st.evm.Config.Tracer.OnGasChange(0, st.msg.GasLimit, tracing.GasChangeTxInitialBalance)
+	}
+
+	st.gasRemaining += st.msg.GasLimit
+
+	st.initialGas = st.msg.GasLimit
+	return nil
+}
+
+func (st *stateTransition) StatelessChecks() error {
 	// Only check transactions that are not fake
 	msg := st.msg
 	if !msg.SkipNonceChecks {
@@ -392,7 +408,19 @@ func (st *stateTransition) preCheck() error {
 			return fmt.Errorf("%w (sender %v)", ErrEmptyAuthList, msg.From)
 		}
 	}
-	return st.buyGas()
+	return nil
+}
+
+func (st *stateTransition) preCheck() error {
+	if !st.feeCharged {
+		if err := st.StatelessChecks(); err != nil {
+			return err
+		}
+		if err := st.BuyGas(); err != nil {
+			return err
+		}
+	}
+	return st.initGas()
 }
 
 // execute will transition the state by applying the current message and

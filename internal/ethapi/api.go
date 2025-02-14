@@ -918,7 +918,7 @@ func RPCMarshalBlock(block *types.Block, inclTx bool, fullTx bool, config *param
 		}
 		if fullTx {
 			formatTx = func(idx int, tx *types.Transaction) interface{} {
-				return newRPCTransactionFromBlockIndex(block, uint64(idx), config)
+				return NewRPCTransactionFromBlockIndex(block, uint64(idx), config)
 			}
 		}
 		txs := block.Transactions()
@@ -1086,8 +1086,8 @@ func NewRPCPendingTransaction(tx *types.Transaction, current *types.Header, conf
 	return newRPCTransaction(tx, common.Hash{}, blockNumber, blockTime, 0, baseFee, config)
 }
 
-// newRPCTransactionFromBlockIndex returns a transaction that will serialize to the RPC representation.
-func newRPCTransactionFromBlockIndex(b *types.Block, index uint64, config *params.ChainConfig) *RPCTransaction {
+// NewRPCTransactionFromBlockIndex returns a transaction that will serialize to the RPC representation.
+func NewRPCTransactionFromBlockIndex(b *types.Block, index uint64, config *params.ChainConfig) *RPCTransaction {
 	txs := b.Transactions()
 	if index >= uint64(len(txs)) {
 		return nil
@@ -1244,7 +1244,7 @@ func (api *TransactionAPI) GetBlockTransactionCountByHash(ctx context.Context, b
 // GetTransactionByBlockNumberAndIndex returns the transaction for the given block number and index.
 func (api *TransactionAPI) GetTransactionByBlockNumberAndIndex(ctx context.Context, blockNr rpc.BlockNumber, index hexutil.Uint) *RPCTransaction {
 	if block, _ := api.b.BlockByNumber(ctx, blockNr); block != nil {
-		return newRPCTransactionFromBlockIndex(block, uint64(index), api.b.ChainConfig())
+		return NewRPCTransactionFromBlockIndex(block, uint64(index), api.b.ChainConfig())
 	}
 	return nil
 }
@@ -1252,7 +1252,7 @@ func (api *TransactionAPI) GetTransactionByBlockNumberAndIndex(ctx context.Conte
 // GetTransactionByBlockHashAndIndex returns the transaction for the given block hash and index.
 func (api *TransactionAPI) GetTransactionByBlockHashAndIndex(ctx context.Context, blockHash common.Hash, index hexutil.Uint) *RPCTransaction {
 	if block, _ := api.b.BlockByHash(ctx, blockHash); block != nil {
-		return newRPCTransactionFromBlockIndex(block, uint64(index), api.b.ChainConfig())
+		return NewRPCTransactionFromBlockIndex(block, uint64(index), api.b.ChainConfig())
 	}
 	return nil
 }
