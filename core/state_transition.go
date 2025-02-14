@@ -205,7 +205,7 @@ func TransactionToMessage(tx *types.Transaction, s types.Signer, baseFee *big.In
 // state and would never be accepted within a block.
 func ApplyMessage(evm *vm.EVM, msg *Message, gp *GasPool) (*ExecutionResult, error) {
 	evm.SetTxContext(NewEVMTxContext(msg))
-	return NewStateTransition(evm, msg, gp, false).execute()
+	return NewStateTransition(evm, msg, gp, false).Execute()
 }
 
 // stateTransition represents a state transition.
@@ -423,7 +423,7 @@ func (st *stateTransition) preCheck() error {
 	return st.initGas()
 }
 
-// execute will transition the state by applying the current message and
+// Execute will transition the state by applying the current message and
 // returning the evm execution result with following fields.
 //
 //   - used gas: total gas used (including gas being refunded)
@@ -433,7 +433,7 @@ func (st *stateTransition) preCheck() error {
 //
 // However if any consensus issue encountered, return the error directly with
 // nil evm execution result.
-func (st *stateTransition) execute() (*ExecutionResult, error) {
+func (st *stateTransition) Execute() (*ExecutionResult, error) {
 	// First check this message satisfies all consensus rules before
 	// applying the message. The rules include these clauses
 	//
