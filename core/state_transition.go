@@ -560,16 +560,18 @@ func (st *stateTransition) Execute() (*ExecutionResult, error) {
 			effectiveTip = msg.GasTipCap
 		}
 	}
-	effectiveTipU256, _ := uint256.FromBig(effectiveTip)
+	//effectiveTipU256, _ := uint256.FromBig(effectiveTip)
 
 	if st.evm.Config.NoBaseFee && msg.GasFeeCap.Sign() == 0 && msg.GasTipCap.Sign() == 0 {
 		// Skip fee payment when NoBaseFee is set and the fee fields
 		// are 0. This avoids a negative effectiveTip being applied to
 		// the coinbase when simulating calls.
 	} else {
-		fee := new(uint256.Int).SetUint64(st.gasUsed())
-		fee.Mul(fee, effectiveTipU256)
-		st.state.AddBalance(st.evm.Context.Coinbase, fee, tracing.BalanceIncreaseRewardTransactionFee)
+		fee := new(big.Int).SetUint64(st.gasUsed())
+		// ENI doesn't burn the base fee and instead funds the Coinbase address with the base fee
+		totalFeePerGas := new(big.Int).Add(st.evm.Context.BaseFee, effectiveTip)
+		fee.Mul(fee, totalFeePerGas)
+		st.state.AddBalance(st.evm.Context.Coinbase, uint256.MustFromBig(fee), tracing.BalanceIncreaseRewardTransactionFee)
 
 		// add the coinbase to the witness iff the fee is greater than 0
 		if rules.IsEIP4762 && fee.Sign() != 0 {
