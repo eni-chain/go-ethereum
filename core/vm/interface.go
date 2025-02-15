@@ -103,6 +103,20 @@ type StateDB interface {
 
 	// Finalise must be invoked at the end of a transaction
 	Finalise(bool)
+
+	// new methods
+	Error() error
+	SetBalance(common.Address, *uint256.Int, tracing.BalanceChangeReason)
+	SetStorage(common.Address, map[common.Hash]common.Hash)
+	Commit(block uint64, deleteEmptyObjects bool, noStorageWiping bool) (common.Hash, error)
+	SetTxContext(thash common.Hash, ti int)
+	//Copy() StateDB
+	IntermediateRoot(deleteEmptyObjects bool) common.Hash
+	GetLogs(hash common.Hash, blockNumber uint64, blockHash common.Hash) []*types.Log
+	TxIndex() int
+	Preimages() map[common.Hash][]byte
+	SetLogger(logger *tracing.Hooks)
+	//SetEVM(evm *EVM)
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM

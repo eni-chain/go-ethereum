@@ -25,7 +25,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/state"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/internal/ethapi/override"
@@ -42,7 +42,7 @@ type Options struct {
 	Config         *params.ChainConfig      // Chain configuration for hard fork selection
 	Chain          core.ChainContext        // Chain context to access past block hashes
 	Header         *types.Header            // Header defining the block context to execute in
-	State          *state.StateDB           // Pre-state on top of which to estimate the gas
+	State          vm.StateDB               // Pre-state on top of which to estimate the gas
 	BlockOverrides *override.BlockOverrides // Block overrides to apply during the estimation
 
 	ErrorRatio float64 // Allowed overestimation ratio for faster estimation termination
@@ -218,9 +218,10 @@ func execute(ctx context.Context, call *core.Message, opts *Options, gasLimit ui
 // call invocation.
 func run(ctx context.Context, call *core.Message, opts *Options) (*core.ExecutionResult, error) {
 	// Assemble the call and the call context
+	snapshotId := opts.State.Snapshot()
 	var (
 		evmContext = core.NewEVMBlockContext(opts.Header, opts.Chain, nil)
-		dirtyState = opts.State.Copy()
+		dirtyState = opts.State
 	)
 	if opts.BlockOverrides != nil {
 		opts.BlockOverrides.Apply(&evmContext)
@@ -247,6 +248,7 @@ func run(ctx context.Context, call *core.Message, opts *Options) (*core.Executio
 	}()
 	// Execute the call, returning a wrapped error or the result
 	result, err := core.ApplyMessage(evm, call, new(core.GasPool).AddGas(math.MaxUint64))
+	opts.State.RevertToSnapshot(snapshotId)
 	if vmerr := dirtyState.Error(); vmerr != nil {
 		return nil, vmerr
 	}

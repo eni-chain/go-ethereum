@@ -157,6 +157,11 @@ type StateDB struct {
 	StorageDeleted atomic.Int64 // Number of storage slots deleted during the state transition
 }
 
+func (s *StateDB) SetLogger(logger *tracing.Hooks) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // New creates a new state from a given trie.
 func New(root common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)

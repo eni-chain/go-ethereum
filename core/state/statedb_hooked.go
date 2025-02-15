@@ -36,6 +36,56 @@ type hookedStateDB struct {
 	hooks *tracing.Hooks
 }
 
+func (s *hookedStateDB) Error() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *hookedStateDB) SetBalance(address common.Address, u *uint256.Int, reason tracing.BalanceChangeReason) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *hookedStateDB) SetStorage(address common.Address, m map[common.Hash]common.Hash) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *hookedStateDB) Commit(block uint64, deleteEmptyObjects bool, noStorageWiping bool) (common.Hash, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *hookedStateDB) SetTxContext(thash common.Hash, ti int) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *hookedStateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *hookedStateDB) GetLogs(hash common.Hash, blockNumber uint64, blockHash common.Hash) []*types.Log {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *hookedStateDB) TxIndex() int {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *hookedStateDB) Preimages() map[common.Hash][]byte {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *hookedStateDB) SetLogger(logger *tracing.Hooks) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // NewHookedState wraps the given stateDb with the given hooks
 func NewHookedState(stateDb *StateDB, hooks *tracing.Hooks) *hookedStateDB {
 	s := &hookedStateDB{stateDb, hooks}
