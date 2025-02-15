@@ -50,6 +50,7 @@ type Server struct {
 
 	mutex              sync.Mutex
 	codecs             map[ServerCodec]struct{}
+	denyList           map[string]struct{}
 	run                atomic.Bool
 	batchItemLimit     int
 	batchResponseLimit int
@@ -61,6 +62,7 @@ func NewServer() *Server {
 	server := &Server{
 		idgen:         randomIDGenerator(),
 		codecs:        make(map[ServerCodec]struct{}),
+		denyList:      make(map[string]struct{}),
 		httpBodyLimit: defaultBodyLimit,
 	}
 	server.run.Store(true)
@@ -87,6 +89,12 @@ func (s *Server) SetBatchLimits(itemLimit, maxResponseSize int) {
 // This method should be called before processing any requests via ServeHTTP.
 func (s *Server) SetHTTPBodyLimit(limit int) {
 	s.httpBodyLimit = limit
+}
+
+// RegisterDenyList add given method name to the deny list so that RPC requests that matches
+// any of the methods in deny list will got rejected directly.
+func (s *Server) RegisterDenyList(methodName string) {
+	s.denyList[methodName] = struct{}{}
 }
 
 // RegisterName creates a service for the given receiver type under the given name. When no
@@ -158,6 +166,15 @@ func (s *Server) serveSingleRequest(ctx context.Context, codec ServerCodec) {
 			codec.writeJSON(ctx, resp, true)
 		}
 		return
+	}
+	// check deny list
+	for _, req := range reqs {
+		method := req.Method
+		if _, found := s.denyList[method]; found {
+			resp := errorMessage(&methodNotFoundError{method: method})
+			codec.writeJSON(ctx, resp, true)
+			return
+		}
 	}
 	if batch {
 		h.handleBatch(reqs)
