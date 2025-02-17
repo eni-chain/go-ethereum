@@ -93,6 +93,12 @@ func CalcBlobFee(config *params.ChainConfig, header *types.Header) *big.Int {
 	return fakeExponential(minBlobGasPrice, new(big.Int).SetUint64(*header.ExcessBlobGas), new(big.Int).SetUint64(frac))
 }
 
+// CalcBlobFeeOld calculates the blobfee from the header's excess blob gas field.
+func CalcBlobFeeOld(excessBlobGas uint64) *big.Int {
+	blobGaspriceUpdateFraction := big.NewInt(int64(params.DefaultBlobSchedule.Cancun.UpdateFraction))
+	return fakeExponential(minBlobGasPrice, new(big.Int).SetUint64(excessBlobGas), blobGaspriceUpdateFraction)
+}
+
 // MaxBlobsPerBlock returns the max blobs per block for a block at the given timestamp.
 func MaxBlobsPerBlock(cfg *params.ChainConfig, time uint64) int {
 	if cfg.BlobScheduleConfig == nil {
