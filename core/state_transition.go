@@ -515,14 +515,15 @@ func (st *stateTransition) Execute() (*ExecutionResult, error) {
 			}
 		}
 
+		// TODO Ignore for now
 		// Perform convenience warming of sender's delegation target. Although the
 		// sender is already warmed in Prepare(..), it's possible a delegation to
 		// the account was deployed during this transaction. To handle correctly,
 		// simply wait until the final state of delegations is determined before
 		// performing the resolution and warming.
-		if addr, ok := types.ParseDelegation(st.state.GetCode(*msg.To)); ok {
-			st.state.AddAddressToAccessList(addr)
-		}
+		//if addr, ok := types.ParseDelegation(st.state.GetCode(*msg.To)); ok {
+		//	st.state.AddAddressToAccessList(addr)
+		//}
 
 		// Execute the transaction's call.
 		ret, st.gasRemaining, vmerr = st.evm.Call(sender, st.to(), msg.Data, st.gasRemaining, value)
