@@ -492,43 +492,52 @@ func (st *stateTransition) Execute() (*ExecutionResult, error) {
 		return nil, fmt.Errorf("%w: code size %v limit %v", ErrMaxInitCodeSizeExceeded, len(msg.Data), params.MaxInitCodeSize)
 	}
 
-	// Execute the preparatory steps for state transition which includes:
-	// - prepare accessList(post-berlin)
-	// - reset transient storage(eip 1153)
-	st.state.Prepare(rules, msg.From, st.evm.Context.Coinbase, msg.To, vm.ActivePrecompiles(rules), msg.AccessList)
-
 	var (
 		ret   []byte
 		vmerr error // vm errors do not effect consensus and are therefore not assigned to err
 	)
-	if contractCreation {
-		ret, _, st.gasRemaining, vmerr = st.evm.Create(sender, msg.Data, st.gasRemaining, value)
-	} else {
+
+	//TODO For ordinary eth transfer transactions,to is the user address and data must be nil。
+	if len(msg.Data) == 0 {
 		// Increment the nonce for the next transaction.
 		st.state.SetNonce(msg.From, st.state.GetNonce(msg.From)+1, tracing.NonceChangeEoACall)
 
-		// Apply EIP-7702 authorizations.
-		if msg.SetCodeAuthorizations != nil {
-			for _, auth := range msg.SetCodeAuthorizations {
-				// Note errors are ignored, we simply skip invalid authorizations here.
-				st.applyAuthorization(&auth)
+		st.evm.Context.Transfer(st.evm.StateDB, sender.Address(), st.to(), value)
+
+	} else {
+		// Execute the preparatory steps for state transition which includes:
+		// - prepare accessList(post-berlin)
+		// - reset transient storage(eip 1153)
+		st.state.Prepare(rules, msg.From, st.evm.Context.Coinbase, msg.To, vm.ActivePrecompiles(rules), msg.AccessList)
+
+		if contractCreation {
+			ret, _, st.gasRemaining, vmerr = st.evm.Create(sender, msg.Data, st.gasRemaining, value)
+		} else {
+			// Increment the nonce for the next transaction.
+			st.state.SetNonce(msg.From, st.state.GetNonce(msg.From)+1, tracing.NonceChangeEoACall)
+
+			// Apply EIP-7702 authorizations.
+			if msg.SetCodeAuthorizations != nil {
+				for _, auth := range msg.SetCodeAuthorizations {
+					// Note errors are ignored, we simply skip invalid authorizations here.
+					st.applyAuthorization(&auth)
+				}
 			}
+
+			// TODO Ignore for now
+			// Perform convenience warming of sender's delegation target. Although the
+			// sender is already warmed in Prepare(..), it's possible a delegation to
+			// the account was deployed during this transaction. To handle correctly,
+			// simply wait until the final state of delegations is determined before
+			// performing the resolution and warming.
+			//if addr, ok := types.ParseDelegation(st.state.GetCode(*msg.To)); ok {
+			//	st.state.AddAddressToAccessList(addr)
+			//}
+
+			// Execute the transaction's call.
+			ret, st.gasRemaining, vmerr = st.evm.Call(sender, st.to(), msg.Data, st.gasRemaining, value)
 		}
-
-		// TODO Ignore for now
-		// Perform convenience warming of sender's delegation target. Although the
-		// sender is already warmed in Prepare(..), it's possible a delegation to
-		// the account was deployed during this transaction. To handle correctly,
-		// simply wait until the final state of delegations is determined before
-		// performing the resolution and warming.
-		//if addr, ok := types.ParseDelegation(st.state.GetCode(*msg.To)); ok {
-		//	st.state.AddAddressToAccessList(addr)
-		//}
-
-		// Execute the transaction's call.
-		ret, st.gasRemaining, vmerr = st.evm.Call(sender, st.to(), msg.Data, st.gasRemaining, value)
 	}
-
 	// Compute refund counter, capped to a refund quotient.
 	gasRefund := st.calcRefund()
 	st.gasRemaining += gasRefund
