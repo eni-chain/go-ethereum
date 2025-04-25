@@ -569,8 +569,7 @@ func (st *stateTransition) Execute() (*ExecutionResult, error) {
 	} else {
 		fee := new(big.Int).SetUint64(st.gasUsed())
 		// ENI doesn't burn the base fee and instead funds the Coinbase address with the base fee
-		//totalFeePerGas := new(big.Int).Add(st.evm.Context.BaseFee, effectiveTip)
-		totalFeePerGas := new(big.Int)
+		totalFeePerGas := new(big.Int).Add(st.evm.Context.BaseFee, effectiveTip)
 		fee.Mul(fee, totalFeePerGas)
 		st.state.AddBalance(st.evm.Context.Coinbase, uint256.MustFromBig(fee), tracing.BalanceIncreaseRewardTransactionFee)
 
