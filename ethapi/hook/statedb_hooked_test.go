@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/holiman/uint256"
@@ -38,7 +39,7 @@ func TestBurn(t *testing.T) {
 	// 3. contract B sends ether to A
 
 	var burned = new(uint256.Int)
-	s, _ := New(types.EmptyRootHash, NewDatabaseForTesting())
+	s, _ := state.New(types.EmptyRootHash, state.NewDatabaseForTesting())
 	hooked := NewHookedState(s, &tracing.Hooks{
 		OnBalanceChange: func(addr common.Address, prev, new *big.Int, reason tracing.BalanceChangeReason) {
 			if reason == tracing.BalanceDecreaseSelfdestructBurn {
@@ -79,7 +80,7 @@ func TestBurn(t *testing.T) {
 
 // TestHooks is a basic sanity-check of all hooks
 func TestHooks(t *testing.T) {
-	inner, _ := New(types.EmptyRootHash, NewDatabaseForTesting())
+	inner, _ := state.New(types.EmptyRootHash, state.NewDatabaseForTesting())
 	inner.SetTxContext(common.Hash{0x11}, 100) // For the log
 	var result []string
 	var wants = []string{
