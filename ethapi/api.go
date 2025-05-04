@@ -387,7 +387,7 @@ func (api *BlockChainAPI) GetProof(ctx context.Context, address common.Address, 
 		var storageTrie state.Trie
 		if storageRoot != types.EmptyRootHash && storageRoot != (common.Hash{}) {
 			id := trie.StorageTrieID(header.Root, crypto.Keccak256Hash(address.Bytes()), storageRoot)
-			st, err := trie.NewStateTrie(id, statedb.Database().TrieDB())
+			st, err := trie.NewStateTrie(id, nil) //statedb.Database().TrieDB()
 			if err != nil {
 				return nil, err
 			}
@@ -418,7 +418,7 @@ func (api *BlockChainAPI) GetProof(ctx context.Context, address common.Address, 
 		}
 	}
 	// Create the accountProof.
-	tr, err := trie.NewStateTrie(trie.StateTrieID(header.Root), statedb.Database().TrieDB())
+	tr, err := trie.NewStateTrie(trie.StateTrieID(header.Root), nil) //statedb.Database().TrieDB()
 	if err != nil {
 		return nil, err
 	}
@@ -657,7 +657,7 @@ func (context *ChainContext) Config() *params.ChainConfig {
 	return context.b.ChainConfig()
 }
 
-func doCall(ctx context.Context, b Backend, args TransactionArgs, state *state.StateDB, header *types.Header, overrides *override.StateOverride, blockOverrides *override.BlockOverrides, timeout time.Duration, globalGasCap uint64) (*core.ExecutionResult, error) {
+func doCall(ctx context.Context, b Backend, args TransactionArgs, state vm.StateDB, header *types.Header, overrides *override.StateOverride, blockOverrides *override.BlockOverrides, timeout time.Duration, globalGasCap uint64) (*core.ExecutionResult, error) {
 	blockCtx := core.NewEVMBlockContext(header, NewChainContext(ctx, b), nil)
 	if blockOverrides != nil {
 		blockOverrides.Apply(&blockCtx)
@@ -688,7 +688,7 @@ func doCall(ctx context.Context, b Backend, args TransactionArgs, state *state.S
 	return applyMessage(ctx, b, args, state, header, timeout, gp, &blockCtx, &vm.Config{NoBaseFee: true}, precompiles, true)
 }
 
-func applyMessage(ctx context.Context, b Backend, args TransactionArgs, state *state.StateDB, header *types.Header, timeout time.Duration, gp *core.GasPool, blockContext *vm.BlockContext, vmConfig *vm.Config, precompiles vm.PrecompiledContracts, skipChecks bool) (*core.ExecutionResult, error) {
+func applyMessage(ctx context.Context, b Backend, args TransactionArgs, state vm.StateDB, header *types.Header, timeout time.Duration, gp *core.GasPool, blockContext *vm.BlockContext, vmConfig *vm.Config, precompiles vm.PrecompiledContracts, skipChecks bool) (*core.ExecutionResult, error) {
 	// Get a new instance of the EVM.
 	if err := args.CallDefaults(gp.Gas(), blockContext.BaseFee, b.ChainConfig().ChainID); err != nil {
 		return nil, err
@@ -702,7 +702,7 @@ func applyMessage(ctx context.Context, b Backend, args TransactionArgs, state *s
 	if msg.BlobGasFeeCap != nil && msg.BlobGasFeeCap.BitLen() == 0 {
 		blockContext.BlobBaseFee = new(big.Int)
 	}
-	evm := b.GetEVM(ctx, state, header, vmConfig, blockContext)
+	evm := b.GetEVM(ctx, msg, state, header, vmConfig, blockContext)
 	if precompiles != nil {
 		evm.SetPrecompiles(precompiles)
 	}
@@ -967,9 +967,9 @@ type RPCTransaction struct {
 	YParity             *hexutil.Uint64              `json:"yParity,omitempty"`
 }
 
-// newRPCTransaction returns a transaction that will serialize to the RPC
+// NewRPCTransaction returns a transaction that will serialize to the RPC
 // representation, with the given location metadata set (if available).
-func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber uint64, blockTime uint64, index uint64, baseFee *big.Int, config *params.ChainConfig) *RPCTransaction {
+func NewRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber uint64, blockTime uint64, index uint64, baseFee *big.Int, config *params.ChainConfig) *RPCTransaction {
 	signer := types.MakeSigner(config, new(big.Int).SetUint64(blockNumber), blockTime)
 	from, _ := types.Sender(signer, tx)
 	v, r, s := tx.RawSignatureValues()
@@ -1083,7 +1083,7 @@ func NewRPCPendingTransaction(tx *types.Transaction, current *types.Header, conf
 		blockNumber = current.Number.Uint64()
 		blockTime = current.Time
 	}
-	return newRPCTransaction(tx, common.Hash{}, blockNumber, blockTime, 0, baseFee, config)
+	return NewRPCTransaction(tx, common.Hash{}, blockNumber, blockTime, 0, baseFee, config)
 }
 
 // NewRPCTransactionFromBlockIndex returns a transaction that will serialize to the RPC representation.
@@ -1092,7 +1092,7 @@ func NewRPCTransactionFromBlockIndex(b *types.Block, index uint64, config *param
 	if index >= uint64(len(txs)) {
 		return nil
 	}
-	return newRPCTransaction(txs[index], b.Hash(), b.NumberU64(), b.Time(), index, b.BaseFee(), config)
+	return NewRPCTransaction(txs[index], b.Hash(), b.NumberU64(), b.Time(), index, b.BaseFee(), config)
 }
 
 // newRPCRawTransactionFromBlockIndex returns the bytes of a transaction given a block and a transaction index.
@@ -1179,7 +1179,9 @@ func AccessList(ctx context.Context, b Backend, blockNrOrHash rpc.BlockNumberOrH
 		log.Trace("Creating access list", "input", accessList)
 
 		// Copy the original db so we don't modify it
-		statedb := db.Copy()
+		snapshot := db.Snapshot()
+		defer db.RevertToSnapshot(snapshot)
+		statedb := db
 		// Set the accesslist to the last al
 		args.AccessList = &accessList
 		msg := args.ToMessage(header.BaseFee, true, true)
@@ -1187,7 +1189,7 @@ func AccessList(ctx context.Context, b Backend, blockNrOrHash rpc.BlockNumberOrH
 		// Apply the transaction with the access list tracer
 		tracer := logger.NewAccessListTracer(accessList, args.from(), to, precompiles)
 		config := vm.Config{Tracer: tracer.Hooks(), NoBaseFee: true}
-		evm := b.GetEVM(ctx, statedb, header, &config, nil)
+		evm := b.GetEVM(ctx, msg, statedb, header, &config, nil)
 
 		// Lower the basefee to 0 to avoid breaking EVM
 		// invariants (basefee < feecap).
@@ -1310,7 +1312,7 @@ func (api *TransactionAPI) GetTransactionByHash(ctx context.Context, hash common
 	if err != nil {
 		return nil, err
 	}
-	return newRPCTransaction(tx, blockHash, blockNumber, header.Time, index, header.BaseFee, api.b.ChainConfig()), nil
+	return NewRPCTransaction(tx, blockHash, blockNumber, header.Time, index, header.BaseFee, api.b.ChainConfig()), nil
 }
 
 // GetRawTransactionByHash returns the bytes of the transaction for the given hash.

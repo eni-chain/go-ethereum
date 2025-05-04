@@ -242,7 +242,7 @@ func (b *EthAPIBackendV2) GetLogs(ctx context.Context, hash common.Hash, number 
 	return rawdb.ReadLogs(b.eth.chainDb, hash, number), nil
 }
 
-func (b *EthAPIBackendV2) GetEVM(ctx context.Context, state vm.StateDB, header *types.Header, vmConfig *vm.Config, blockCtx *vm.BlockContext) *vm.EVM {
+func (b *EthAPIBackendV2) GetEVM(ctx context.Context, msg *core.Message, state vm.StateDB, header *types.Header, vmConfig *vm.Config, blockCtx *vm.BlockContext) *vm.EVM {
 	if vmConfig == nil {
 		vmConfig = b.eth.blockchain.GetVMConfig()
 	}

@@ -30,7 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/ethapi/override"
@@ -85,7 +84,7 @@ type simOpts struct {
 // it is not safe for concurrent use.
 type simulator struct {
 	b              Backend
-	state          *state.StateDB
+	state          vm.StateDB
 	base           *types.Header
 	chainConfig    *params.ChainConfig
 	gp             *core.GasPool
@@ -186,7 +185,8 @@ func (sim *simulator) processBlock(ctx context.Context, block *simBlock, header,
 	)
 	tracingStateDB := vm.StateDB(sim.state)
 	if hooks := tracer.Hooks(); hooks != nil {
-		tracingStateDB = state.NewHookedState(sim.state, hooks)
+		//tracingStateDB = state.NewHookedState(sim.state, hooks)
+		panic("todo")
 	}
 	evm := vm.NewEVM(blockContext, tracingStateDB, sim.chainConfig, *vmConfig)
 	// It is possible to override precompiles with EVM bytecode, or
