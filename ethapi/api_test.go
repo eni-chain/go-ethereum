@@ -34,7 +34,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/internal/ethapi/override"
+	"github.com/ethereum/go-ethereum/ethapi/override"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts"
