@@ -186,7 +186,7 @@ func (sim *simulator) processBlock(ctx context.Context, block *simBlock, header,
 	tracingStateDB := vm.StateDB(sim.state)
 	if hooks := tracer.Hooks(); hooks != nil {
 		//tracingStateDB = state.NewHookedState(sim.state, hooks)
-		panic("todo")
+		panic("todo hook")
 	}
 	evm := vm.NewEVM(blockContext, tracingStateDB, sim.chainConfig, *vmConfig)
 	// It is possible to override precompiles with EVM bytecode, or
