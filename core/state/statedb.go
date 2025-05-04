@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/stateless"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -126,7 +127,7 @@ type StateDB struct {
 
 	// Per-transaction access list
 	accessList   *accessList
-	accessEvents *AccessEvents
+	accessEvents *vm.AccessEvents
 
 	// Transient storage
 	transientStorage transientStorage
@@ -187,7 +188,7 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 		transientStorage:     newTransientStorage(),
 	}
 	if db.TrieDB().IsVerkle() {
-		sdb.accessEvents = NewAccessEvents(db.PointCache())
+		sdb.accessEvents = vm.NewAccessEvents(db.PointCache())
 	}
 	return sdb, nil
 }
@@ -1437,6 +1438,6 @@ func (s *StateDB) Witness() *stateless.Witness {
 	return s.witness
 }
 
-func (s *StateDB) AccessEvents() *AccessEvents {
+func (s *StateDB) AccessEvents() *vm.AccessEvents {
 	return s.accessEvents
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/stateless"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie/utils"
@@ -207,7 +208,7 @@ func (s *hookedStateDB) Witness() *stateless.Witness {
 	return s.inner.Witness()
 }
 
-func (s *hookedStateDB) AccessEvents() *AccessEvents {
+func (s *hookedStateDB) AccessEvents() *vm.AccessEvents {
 	return s.inner.AccessEvents()
 }
 
