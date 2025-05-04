@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/ethapi/hook"
 	"github.com/ethereum/go-ethereum/ethapi/override"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -185,8 +186,7 @@ func (sim *simulator) processBlock(ctx context.Context, block *simBlock, header,
 	)
 	tracingStateDB := vm.StateDB(sim.state)
 	if hooks := tracer.Hooks(); hooks != nil {
-		//tracingStateDB = state.NewHookedState(sim.state, hooks)
-		panic("todo hook")
+		tracingStateDB = hook.NewHookedState(sim.state, hooks)
 	}
 	evm := vm.NewEVM(blockContext, tracingStateDB, sim.chainConfig, *vmConfig)
 	// It is possible to override precompiles with EVM bytecode, or

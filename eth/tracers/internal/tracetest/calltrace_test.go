@@ -29,11 +29,11 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth/tracers"
+	"github.com/ethereum/go-ethereum/ethapi/hook"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/tests"
 )
@@ -126,7 +126,7 @@ func testCallTracer(tracerName string, dirPath string, t *testing.T) {
 			}
 			logState := vm.StateDB(st.StateDB)
 			if tracer.Hooks != nil {
-				logState = state.NewHookedState(st.StateDB, tracer.Hooks)
+				logState = hook.NewHookedState(st.StateDB, tracer.Hooks)
 			}
 			msg, err := core.TransactionToMessage(tx, signer, context.BaseFee)
 			if err != nil {
@@ -360,7 +360,7 @@ func TestInternals(t *testing.T) {
 
 			logState := vm.StateDB(st.StateDB)
 			if hooks := tc.tracer.Hooks; hooks != nil {
-				logState = state.NewHookedState(st.StateDB, hooks)
+				logState = hook.NewHookedState(st.StateDB, hooks)
 			}
 
 			tx, err := types.SignNewTx(key, signer, &types.LegacyTx{
