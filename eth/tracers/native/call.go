@@ -225,6 +225,9 @@ func (t *callTracer) OnTxEnd(receipt *types.Receipt, err error) {
 		return
 	}
 	if receipt != nil {
+		if len(t.callstack) == 0 {
+			t.callstack = append(t.callstack, callFrame{})
+		}
 		t.callstack[0].GasUsed = receipt.GasUsed
 	}
 	if t.config.WithLog {

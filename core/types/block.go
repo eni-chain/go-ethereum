@@ -232,6 +232,13 @@ type extblock struct {
 	Withdrawals []*Withdrawal `rlp:"optional"`
 }
 
+func NewBlock2(header *Header, txs Transactions) *Block {
+	return &Block{
+		header:       header,
+		transactions: txs,
+	}
+}
+
 // NewBlock creates a new block. The input data is copied, changes to header and to the
 // field values will not affect the block.
 //
